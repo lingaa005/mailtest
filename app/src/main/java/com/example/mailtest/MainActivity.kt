@@ -9,26 +9,18 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import com.example.mailtest.model.Email
-import kotlin.concurrent.thread
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var emailAdapter: EmailAdapter
     private val emails = mutableListOf<Email>()
     private val handler = Handler(Looper.getMainLooper())
 
-    private val fetchEmailsRunnable = object : Runnable {
-        override fun run() {
-            thread {
-                val fetchedEmails = GmailFetcher.fetchEmails()
-
-                runOnUiThread {
-                    updateEmailList(fetchedEmails)
-                }
-            }
-            handler.postDelayed(this, 2000) // Run again after 2 seconds
-        }
-    }
+    // Thread pool limiting to 12 concurrent fetches
+    private val executorService = Executors.newFixedThreadPool(12)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,39 +41,52 @@ class MainActivity : AppCompatActivity() {
 
         recyclerView.adapter = emailAdapter
 
-        // Start auto-fetching emails every 2 seconds
-        handler.post(fetchEmailsRunnable)
+        // Schedule email fetching every 2 seconds
+        startFetchingEmails()
+    }
+
+    private fun startFetchingEmails() {
+        handler.post(object : Runnable {
+            override fun run() {
+                executorService.execute {
+                    val fetchedEmails = GmailFetcher.fetchEmails()
+
+                    runOnUiThread {
+                        updateEmailList(fetchedEmails)
+                    }
+                }
+                handler.postDelayed(this, 2000) // Fetch again after 2 sec
+            }
+        })
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(fetchEmailsRunnable) // Stop auto-fetching when activity is destroyed
+        handler.removeCallbacksAndMessages(null) // Stop auto-fetching
+        executorService.shutdown() // Stop thread pool execution
+        try {
+            if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
+                executorService.shutdownNow() // Force shutdown if tasks are running
+            }
+        } catch (e: InterruptedException) {
+            executorService.shutdownNow()
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
     private fun updateEmailList(newEmails: List<Email>) {
-        val oldSize = emails.size
-        val newSize = newEmails.size
+        val previousSize = emails.size
 
-        // Compare and update only the changed parts
-        if (newSize > oldSize) {
-            val addedEmails = newEmails.subList(oldSize, newSize)
-            emails.addAll(addedEmails)
-            emailAdapter.notifyItemRangeInserted(oldSize, addedEmails.size)
-        } else if (newSize < oldSize) {
-            emails.clear()
-            emails.addAll(newEmails)
-            emailAdapter.notifyDataSetChanged() // Only needed if emails are removed
-        } else {
-            // Update only modified emails
-            for (i in newEmails.indices) {
-                if (emails[i] != newEmails[i]) {
-                    emails[i] = newEmails[i]
-                    emailAdapter.notifyItemChanged(i)
-                }
-            }
+        // Find new emails
+        val newEntries = newEmails.filter { it !in emails }
+        emails.addAll(newEntries)
+
+        // Remove old emails
+        emails.retainAll(newEmails)
+
+        if (emails.size != previousSize) {
+            emailAdapter.notifyDataSetChanged()
+            Toast.makeText(this@MainActivity, "Emails Updated", Toast.LENGTH_SHORT).show()
         }
-
-        Toast.makeText(this@MainActivity, "Emails Updated", Toast.LENGTH_SHORT).show()
     }
 }
