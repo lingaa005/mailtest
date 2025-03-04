@@ -17,12 +17,31 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emailAdapter: EmailAdapter
     private val emails = mutableListOf<Email>()
 
+    private val handler = Handler(Looper.getMainLooper())
+
+    private val fetchEmailsRunnable = object : Runnable {
+        @SuppressLint("NotifyDataSetChanged")
+        override fun run() {
+            thread {
+                val fetchedEmails = GmailFetcher.fetchEmails()
+                Handler(Looper.getMainLooper()).post {
+                    emails.clear()
+                    emails.addAll(fetchedEmails)
+                    emailAdapter.notifyDataSetChanged()
+                    Toast.makeText(this@MainActivity, "Emails Updated", Toast.LENGTH_SHORT).show()
+                }
+            }
+            handler.postDelayed(this, 2000) // Run again after 2 seconds
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
+
         emailAdapter = EmailAdapter(emails) { email ->
             val intent = Intent(this, EmailDetailActivity::class.java).apply {
                 putExtra("subject", email.subject)
@@ -35,19 +54,12 @@ class MainActivity : AppCompatActivity() {
 
         recyclerView.adapter = emailAdapter
 
-        fetchEmails()
+        // Start auto-fetching emails every 2 seconds
+        handler.post(fetchEmailsRunnable)
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    private fun fetchEmails() {
-        thread {
-            val fetchedEmails = GmailFetcher.fetchEmails()
-            Handler(Looper.getMainLooper()).post {
-                emails.clear()
-                emails.addAll(fetchedEmails)
-                emailAdapter.notifyDataSetChanged()
-                Toast.makeText(this, "Emails Loaded", Toast.LENGTH_SHORT).show()
-            }
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(fetchEmailsRunnable) // Stop auto-fetching when activity is destroyed
     }
 }
