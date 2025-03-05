@@ -58,4 +58,6 @@ dependencies {
     implementation(libs.android.mail)
     implementation(libs.android.activation)
     implementation(libs.androidx.cardview)
+    implementation("androidx.core:core-ktx:1.12.0") // For SpeechRecognizer
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2") // Lifecycle handling
 }
