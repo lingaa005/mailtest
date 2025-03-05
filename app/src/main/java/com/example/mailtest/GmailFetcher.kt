@@ -9,8 +9,8 @@ object GmailFetcher {
 
     private const val IMAP_HOST = "imap.gmail.com"
     private const val IMAP_PORT = "993"
-    private const val USERNAME = "kasilingamtvm@gmail.com"  // Replace with your email
-    private const val APP_PASSWORD = "abte jfgy jtox gnnq" // Replace with App Password
+    private const val USERNAME = "mkasilingammuthu@gmail.com"  // Replace with your email
+    private const val APP_PASSWORD = "wiwc ixkd hvjh aruu" // Replace with App Password
 
     fun fetchEmails(): List<Email> {
         val emails = mutableListOf<Email>()
