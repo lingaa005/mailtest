@@ -17,8 +17,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var emailAdapter: EmailAdapter
     private val emails = mutableListOf<Email>()
     private lateinit var tts: TextToSpeech
-    private var isReadingAllEmails = false
     private var isTTSInitialized = false
+    private var hasReadEmails = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,27 +48,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 emailAdapter.notifyDataSetChanged()
                 Toast.makeText(this, "Emails Loaded", Toast.LENGTH_SHORT).show()
 
-                // Start reading emails aloud only once when loaded
-                if (!isReadingAllEmails) {
-                    isReadingAllEmails = true
-                    readAllEmailsAloud()
+                if (!hasReadEmails) {
+                    hasReadEmails = true
+                    readEmailsSummary()
                 }
             }
         }.start()
     }
 
-    private fun readAllEmailsAloud() {
+    private fun readEmailsSummary() {
         if (!isTTSInitialized) return
 
-        Thread {
-            for (email in emails) {
-                if (!isReadingAllEmails) return@Thread  // Stop if user interrupts
-                val text = "From ${email.sender}. Subject: ${email.subject}. Received on ${email.date}."
-                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
-                Thread.sleep(4000) // Allow enough time to read
-            }
-            isReadingAllEmails = false // Mark reading as finished
-        }.start()
+        val text = emails.joinToString(" ") {
+            "From ${it.sender}. Subject: ${it.subject}. Received on ${it.date}."
+        }
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
     private fun readSelectedEmail(email: Email) {
@@ -79,7 +73,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun stopReading() {
-        isReadingAllEmails = false
         tts.stop()
     }
 
