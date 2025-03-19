@@ -70,7 +70,7 @@ class EmailAdapter(
 
     // Reads a specific email aloud
     private fun readEmail(email: Email) {
-        val text = "From ${email.sender}, Subject: ${email.subject}, Date: ${email.date}"
+        val text = "From ${email.sender}, Subject: ${email.subject}, Date: ${email.date}, Content: ${email.body}"
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
