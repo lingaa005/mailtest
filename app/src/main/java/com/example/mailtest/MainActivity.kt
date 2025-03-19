@@ -1,5 +1,5 @@
 package com.example.mailtest
-
+//final modificatinon by lingaa
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
